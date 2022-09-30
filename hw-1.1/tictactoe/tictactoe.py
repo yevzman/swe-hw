@@ -73,44 +73,33 @@ class GameField:
     def __check_cell_is_empty(self, x: int, y: int) -> bool:
         return self.matrix[x][y].is_empty()
 
-    def __check_line(self, index: int, symbol: str) -> bool:
-        current_len = 0
-        max_len = 0
+    def __check(self, index: int, symbol: str, is_column: bool) -> bool:
+        current_streak = 0
+        max_streak = 0
         for i in range(self.N):
-            if self.matrix[index][i].get_internal_symbol() == symbol:
-                current_len += 1
+            suspect = self.matrix[index][i].get_internal_symbol()
+            if is_column:
+                suspect = self.matrix[i][index].get_internal_symbol()
+            if suspect == symbol:
+                current_streak += 1
             else:
-                current_len = 0
-            max_len = max(max_len, current_len)
-        return max_len >= self.max_seq_value
-
-    def __check_column(self, index: int, symbol: str) -> bool:
-        current_len = 0
-        max_len = 0
-        for i in range(self.N):
-            if self.matrix[i][index].get_internal_symbol() == symbol:
-                current_len += 1
-            else:
-                current_len = 0
-            max_len = max(max_len, current_len)
-        return max_len >= self.max_seq_value
+                current_streak = 0
+            max_streak = max(max_streak, current_streak)
+        return max_streak >= self.max_seq_value
 
     def __check_lines(self, symbol) -> bool:
         for i in range(self.N):
-            if self.__check_line(i, symbol):
+            if self.__check(i, symbol, False):
                 return True
         return False
 
     def __check_columns(self, symbol: str) -> bool:
         for i in range(self.N):
-            if self.__check_column(i, symbol):
+            if self.__check(i, symbol, True):
                 return True
         return False
 
     def __check_diagonals(self, symbol: str) -> bool:
-        current_len = 0
-        max_len = 0
-        x, y = 0, 0
         for i in range(self.N):
             x = self.N - i - 1
             y = 0
@@ -144,7 +133,6 @@ class GameField:
         return False
 
     def __check_diagonals_reversed(self, symbol: str) -> bool:
-        x, y = 0, 0
         for i in range(self.N):
             x = self.N - i - 1
             y = 0
@@ -203,21 +191,21 @@ class GameField:
         return False
 
     def __check_win_after(self, step: tuple, symbol: str) -> bool:
-        if self.__check_line(step[0], symbol) or self.__check_column(step[1], symbol) or \
-           self.__check_diagonals(symbol) or self.__check_diagonals_reversed(symbol):
+        if self.__check(step[0], symbol, False) or self.__check(step[1], symbol, True) or \
+                self.__check_diagonals(symbol) or self.__check_diagonals_reversed(symbol):
             return True
         return False
 
-    def next_player_step(self, x: int, y: int) -> None:
-        x -= 1
-        y -= 1
-        if x >= self.N or y >= self.N or x < 0 or y < 0:
+    def next_player_step(self, step_x: int, step_y: int) -> None:
+        step_x -= 1
+        step_y -= 1
+        if step_x >= self.N or step_y >= self.N or step_x < 0 or step_y < 0:
             print('Invalid coordinates, check them and try again')
             return
-        elif not self.__check_cell_is_empty(x, y):
+        if not self.__check_cell_is_empty(step_x, step_y):
             print('Invalid coordinates, check them and try again')
             return
-        self.__update_cell_by_index(x, y, self.current_symbol)
+        self.__update_cell_by_index(step_x, step_y, self.current_symbol)
         self.check_player_won(self.current_symbol, True)
         self.current_symbol = '0' if self.current_symbol == 'X' else 'X'
 
@@ -229,14 +217,13 @@ class GameField:
                     possible_steps.add((i, j))
 
         p_size = len(possible_steps)
+        self.max_tree_lvl = 15
         if p_size > 20:
             self.max_tree_lvl = 2
         elif p_size > 16:
             self.max_tree_lvl = 3
         elif p_size > 9:
             self.max_tree_lvl = 4
-        else:
-            self.max_tree_lvl = 15
         self.minimax(possible_steps, self.max_tree_lvl, '0')
         self.__update_cell_by_index(self.best_bot_step[0], self.best_bot_step[1], '0')
         self.check_player_won(self.current_symbol, True)
@@ -287,9 +274,9 @@ def get_field_size() -> int:
 
 def get_game_type() -> bool:
     while True:
-        t = input('Input type of game. 1 if you want play with bot, 0 if PvP.\n').strip().rstrip()
-        if t == '0' or t == '1':
-            return bool(t)
+        game_type = input('Input type of game. 1 if you want play with bot, 0 if PvP.\n').strip().rstrip()
+        if game_type == '0' or game_type == '1':
+            return bool(game_type)
         else:
             print('Invalid type. It should be 1 or 0')
 
@@ -308,3 +295,6 @@ if __name__ == '__main__':
         if play_with_bot:
             print('Bot step')
             game.next_bot_step()
+
+"""Функции __check_diagonals и __check_diagonals_reversed можно сделать без повторений, добавив функцию
+    пробежки по циклу в указанном направлении и правльным обращениям к этой функции"""
